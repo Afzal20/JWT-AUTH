@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
-from .models import CustomUser
-
+from .models import CustomUser, Profil
+from django.utils.html import format_html
 
 class CustomUserCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
@@ -37,4 +37,19 @@ class CustomUserAdmin(UserAdmin):
     ordering = ('email',)
 
 
+class ProfilAdmin(admin.ModelAdmin):
+    list_display = ('user', 'image_tag', 'description', 'address', 'phone', 'NumberOfOrders', 'orders')
+    
+    # Function to display the image as a thumbnail in the admin panel
+    def image_tag(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="50" height="50" />'.format(obj.image.url))
+        else:
+            return 'No Image'
+
+    image_tag.short_description = 'Profile Image'
+
+
+
 admin.site.register(CustomUser, CustomUserAdmin)
+admin.site.register(Profil, ProfilAdmin)

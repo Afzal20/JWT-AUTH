@@ -36,3 +36,18 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = []  # No required fields for superuser creation
 
     objects = CustomUserManager()  # Use the custom manager
+
+
+
+class Profil(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    image = models.ImageField(default='default.jpg', upload_to='profile_pics')
+    description = models.TextField(default='Description')
+    address = models.CharField(max_length=254, default='Address')
+    phone = models.CharField(max_length=20, default='Phone')
+    NumberOfOrders = models.IntegerField(default=0)
+    orders = models.CharField(max_length=50, default="Not ANY ORDRS")
+
+    def __str__(self):
+        return f'{self.user.name} Profile'
+    
