@@ -1,53 +1,50 @@
-from django.contrib.auth.models import BaseUserManager
-from django.contrib.auth.models import AbstractUser
 from django.db import models
-
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.utils.translation import gettext_lazy as _
+from django.utils.crypto import get_random_string
+from django.contrib.auth.hashers import make_password, check_password
+from datetime import datetime, timedelta
+from django.utils.timezone import now
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
-            raise ValueError('The Email field must be set')
+            raise ValueError(_('The Email field must be set'))
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
-        user.save(using=self._db)
+        user.save()
         return user
-
+    
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-
         return self.create_user(email, password, **extra_fields)
 
-
-
 class CustomUser(AbstractUser):
-    name = models.CharField(max_length=50, default='Anonymous')
-    email = models.EmailField(max_length=254, unique=True)
-    password = models.CharField(max_length=254)
-    username = None
+    email = models.EmailField(_('Email Address'), unique=True)
+    otp_hash = models.CharField(_('OTP Hash'), max_length=255, blank=True, null=True)
+    otp_created_at = models.DateTimeField(_('OTP Created At'), blank=True, null=True)
+    is_verified = models.BooleanField(_('Verified'), default=False)
 
-    USERNAME_FIELD = 'email'  # login with email
-    REQUIRED_FIELDS = []  # No required fields for superuser creation
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
 
-    objects = CustomUserManager()  # Use the custom manager
-
-
-
-class Profil(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    image = models.ImageField(default='default.jpg', upload_to='profile_pics')
-    description = models.TextField(default='Description')
-    address = models.CharField(max_length=254, default='Address')
-    phone = models.CharField(max_length=20, default='Phone')
-    NumberOfOrders = models.IntegerField(default=0)
-    orders = models.CharField(max_length=50, default="Not ANY ORDRS")
+    objects = CustomUserManager()
 
     def __str__(self):
-        return f'{self.user.name} Profile'
-    
+        return self.email
+
+    def generate_otp(self):
+        otp = get_random_string(length=6, allowed_chars='0123456789')
+        self.otp_hash = make_password(otp)
+        self.otp_created_at = datetime.now()
+        self.save()
+        return otp
+
+    def validate_otp(self, otp):
+        if not self.otp_created_at or self.otp_created_at < now() - timedelta(minutes=10):
+            return False  # OTP expired
+        return check_password(otp, self.otp_hash)
+
